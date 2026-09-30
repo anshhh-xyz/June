@@ -1,0 +1,24 @@
+# Secrets: never commit these
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+
+# Leftovers from test scripts
+tmp_check/
+tmp_agent/
+try_groq.py
+
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
