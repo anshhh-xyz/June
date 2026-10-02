@@ -1,7 +1,7 @@
 from pathlib import Path
 
 WORKSPACE = Path(".").resolve()
-
+SKIP = {".git", "node_modules", "__pycache__", ".venv", "venv"}
 
 def safe(path):
     p = (WORKSPACE / path).resolve()

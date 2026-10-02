@@ -1,29 +1,28 @@
 import subprocess
 
 from .common import WORKSPACE, trunc, tool, S
+import os, signal, subprocess, sys
 
+def _kill_tree(p):
+    if sys.platform == "win32":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True)
+    else:
+        os.killpg(p.pid, signal.SIGKILL)
 
 def run_command(command, timeout=60):
+    p = subprocess.Popen(
+        command, shell=True, cwd=WORKSPACE,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+        text=True, encoding="utf-8", errors="replace",
+        start_new_session=(sys.platform != "win32"),
+    )
     try:
-        r = subprocess.run(
-            command,
-            shell=True,
-            cwd=WORKSPACE,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            stdin=subprocess.DEVNULL,
-        )
+        out, err = p.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
+        _kill_tree(p)
+        p.communicate()          # collect leftovers so nothing hangs
         return {"error": f"Timed out after {timeout}s"}
-    return {
-        "stdout": trunc(r.stdout),
-        "stderr": trunc(r.stderr),
-        "return_code": r.returncode,
-    }
-
+    return {"stdout": trunc(out), "stderr": trunc(err), "return_code": p.returncode}
 
 SCHEMAS = [
     tool(

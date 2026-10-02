@@ -1,13 +1,52 @@
-from .common import safe, tool, S
-
-SKIP = {".git", "node_modules", "__pycache__", ".venv", "venv"}
+from .common import safe, tool, trunc, S, SKIP
 
 
-def read_file(path, limit=20000):
-    text = safe(path).read_text(encoding="utf-8")
-    if len(text) > limit:
-        text = text[:limit] + f"\n[...truncated, file is {len(text)} chars]"
-    return text
+def _line_arg(value, name):
+    """Return (int_or_None, error_or_None)."""
+    if value is None:
+        return None, None
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None, f"ERROR: {name} must be an integer, got {value!r}"
+    if n < 1:
+        return None, f"ERROR: {name} must be >= 1 (lines are 1-based), got {n}"
+    return n, None
+
+
+def read_file(path, start=None, end=None):
+    start, err = _line_arg(start, "start")
+    if err:
+        return err
+    end, err = _line_arg(end, "end")
+    if err:
+        return err
+    if start is not None and end is not None and start > end:
+        return f"ERROR: start ({start}) is greater than end ({end})"
+
+    p = safe(path)  # may raise ValueError (path guard) - intentionally not caught
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:
+        return f"ERROR: {e}"
+
+    lines = text.splitlines()
+    total = len(lines)
+    if total == 0:
+        return "[empty file]"
+
+    first = start if start is not None else 1
+    last = min(end, total) if end is not None else total
+
+    if first > total:
+        return f"ERROR: start ({first}) is past the end of the file, which has {total} lines"
+
+    selected = lines[first - 1:last]
+    header = f"[lines {first}-{last} of {total}]"
+    body = "\n".join(
+        f"{n}: {line}" for n, line in enumerate(selected, start=first)
+    )
+    return trunc(f"{header}\n{body}")
 
 
 def write_file(path, content):
@@ -47,8 +86,13 @@ SCHEMAS = [
     ),
     tool(
         "read_file",
-        "Read a text file from the workspace.",
-        {"path": S},
+        "Read a text file. Optional start/end (1-based, inclusive) read a line range. "
+        "Output lines are prefixed 'N: '; that prefix is NOT part of the file.",
+        {
+            "path": S,
+            "start": {"type": "integer", "description": "first line (1-based)"},
+            "end": {"type": "integer", "description": "last line (inclusive)"},
+        },
         ["path"],
     ),
     tool(
