@@ -72,6 +72,51 @@ except ValueError:
 print("search checks OK")
 
 
+# --- git checks ---
+import tempfile
+from tools import git
+
+with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as repo:
+    git.WORKDIR = repo
+    try:
+        assert git._git("init")[0] == 0
+        git._git("config", "user.name", "Test")
+        git._git("config", "user.email", "test@example.com")
+
+        (Path(repo) / "a.txt").write_text("one\n")
+        assert "a.txt" in git.git_status()
+
+        assert git.git_commit("").startswith("ERROR")
+        first = git.git_commit("first commit")
+        assert not first.startswith("ERROR") and "first commit" in first
+
+        again = git.git_commit("nothing new")
+        assert not again.startswith("ERROR") and "nothing to commit" in again.lower()
+
+        (Path(repo) / "a.txt").write_text("two\n")
+        d = git.git_diff()
+        assert "-one" in d and "+two" in d
+        assert "first commit" in git.git_log()
+        assert not git.git_log(999).startswith("ERROR")   # clamped, not an error
+    finally:
+        git.WORKDIR = None
+
+with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as notrepo:
+    git.WORKDIR = notrepo
+    try:
+        assert git.git_status().startswith("ERROR")        # readable error, no crash
+    finally:
+        git.WORKDIR = None
+
+try:
+    git.git_diff("../")
+    raise SystemExit("git_diff path guard FAILED")
+except ValueError:
+    pass
+print("git checks OK")
+
+
+
 # Cleanup
 shutil.rmtree("tmp_check")
 print("All tool checks passed.")
