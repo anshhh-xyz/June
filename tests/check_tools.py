@@ -40,6 +40,38 @@ assert tools.read_file("tmp_check/ten.txt", start=0).startswith("ERROR")
 assert tools.read_file("tmp_check/ten.txt", start="abc").startswith("ERROR")
 print("read_file range checks OK")
 
+# --- search checks ---
+from pathlib import Path
+from tools import search
+
+tools.write_file("tmp_check/s/a.py", "def hello():\n    return 1\n")
+tools.write_file("tmp_check/s/sub/b.py", "x = 'hello world'\n")
+tools.write_file("tmp_check/s/__pycache__/c.py", "hello hidden\n")
+Path("tmp_check/s/bin.dat").write_bytes(b"hello\x00\x01\x02")
+
+r = search.search_code("hello", "tmp_check/s")
+assert "a.py:1:" in r and "b.py:1:" in r
+assert "__pycache__" not in r, "SKIP folder was searched"
+assert "bin.dat" not in r, "binary file was searched"
+
+assert search.search_code("zzzznotfound", "tmp_check/s") == "No matches."
+assert search.search_code("(unclosed", "tmp_check/s").startswith("ERROR")
+assert search.search_code("hello", "tmp_check/nope").startswith("ERROR")
+
+tools.write_file("tmp_check/s/many.txt", "\n".join("match" for _ in range(80)))
+assert "truncated" in search.search_code("match", "tmp_check/s")
+
+f = search.find_files("*.py")
+assert "tmp_check/s/a.py" in f and "__pycache__" not in f
+
+try:
+    search.search_code("x", "../")
+    raise SystemExit("search path guard FAILED")
+except ValueError:
+    pass
+print("search checks OK")
+
+
 # Cleanup
 shutil.rmtree("tmp_check")
 print("All tool checks passed.")
