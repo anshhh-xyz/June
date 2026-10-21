@@ -1,4 +1,4 @@
-from user_input import get_user_input
+from core.user_input import get_user_input
 from core.agent import run_agent
 from models.prompts import AGENT_PROMPT
 from models.key_manager import NoKeysConfigured, AllKeysUnavailable

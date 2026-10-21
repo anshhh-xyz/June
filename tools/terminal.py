@@ -1,7 +1,9 @@
+import os
+import signal
 import subprocess
+import sys
 
 from .common import WORKSPACE, trunc, tool, S
-import os, signal, subprocess, sys
 
 def _kill_tree(p):
     if sys.platform == "win32":

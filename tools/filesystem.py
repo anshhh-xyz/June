@@ -1,5 +1,5 @@
 from .common import safe, tool, trunc, S, SKIP
-
+from .common import safe, tool, trunc_head, S, SKIP
 
 def _line_arg(value, name):
     """Return (int_or_None, error_or_None)."""
@@ -23,6 +23,7 @@ def read_file(path, start=None, end=None):
         return err
     if start is not None and end is not None and start > end:
         return f"ERROR: start ({start}) is greater than end ({end})"
+        
 
     p = safe(path)  # may raise ValueError (path guard) - intentionally not caught
     try:
@@ -46,7 +47,7 @@ def read_file(path, start=None, end=None):
     body = "\n".join(
         f"{n}: {line}" for n, line in enumerate(selected, start=first)
     )
-    return trunc(f"{header}\n{body}")
+    return trunc_head(f"{header}\n{body}")
 
 
 def write_file(path, content):

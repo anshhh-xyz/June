@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import json
 import shutil
 import tools
@@ -115,6 +120,44 @@ except ValueError:
     pass
 print("git checks OK")
 
+# --- analysis checks ---
+tools.write_file("tmp_check/a/good.py",
+                 "class A:\n    def m(self, x):\n        return x\n\ndef f(a, b=1):\n    return a\n")
+tools.write_file("tmp_check/a/bad.py", "def broken(:\n    pass\n")
+
+assert tools.check_syntax("tmp_check/a/good.py").startswith("OK")
+bad = tools.check_syntax("tmp_check/a/bad.py")
+assert bad.startswith("SYNTAX ERROR") and "line 1" in bad
+assert tools.check_syntax("tmp_check/a/nope.py").startswith("ERROR")
+
+o = tools.outline("tmp_check/a/good.py")
+assert "class A" in o and "def m(self, x)" in o and "def f(a, b=1)" in o
+assert tools.outline("tmp_check/a/bad.py").startswith("ERROR")
+print("analysis checks OK")
+
+# --- run_tests checks ---
+tools.write_file("tmp_check/rt/calculator.py", "def add(a, b):\n    return a - b\n")
+tools.write_file(
+    "tmp_check/rt/test_calculator.py",
+    "import unittest\nfrom calculator import add\n\n"
+    "class T(unittest.TestCase):\n"
+    "    def test_add(self):\n"
+    "        self.assertEqual(add(2, 3), 5)\n",
+)
+r = tools.run_tests("tmp_check/rt")
+assert r["passed"] is False, r            # planted bug must be caught
+
+tools.edit_file("tmp_check/rt/calculator.py", "a - b", "a + b")
+r = tools.run_tests("tmp_check/rt")
+assert r["passed"] is True, r             # fixed
+
+assert tools.run_tests("tmp_check/nope")["passed"] is False
+try:
+    tools.run_tests("../")
+    raise SystemExit("run_tests path guard FAILED")
+except ValueError:
+    pass
+print("run_tests checks OK")
 
 
 # Cleanup

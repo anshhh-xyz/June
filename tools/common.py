@@ -15,6 +15,12 @@ def trunc(text, limit=4000):
         return text
     return f"[...truncated {len(text) - limit} chars...]\n" + text[-limit:]
 
+def trunc_head(text, limit=12000):
+    """Keep the START of the text (use for file contents)."""
+    if len(text) <= limit:
+        return text
+    return (text[:limit]
+            + f"\n[...truncated {len(text) - limit} chars; use start/end to read the rest...]")
 
 def tool(name, desc, props, required):
     return {

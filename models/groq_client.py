@@ -8,7 +8,7 @@ from .key_manager import KeyManager, AllKeysUnavailable
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 MAX_AUTO_WAIT = 60      # if all keys cool down for <= this many seconds, just wait
 MAX_TRANSIENT = 2       # retries for network / server errors
-MAX_TOOL_FLAKES = 2     # retries when the model emits a malformed tool call
+MAX_TOOL_FLAKES =3     # retries when the model emits a malformed tool call
 
 _manager = None
 _clients = {}
@@ -77,7 +77,9 @@ def ask_groq(messages, tools=None, model=DEFAULT_MODEL):
             time.sleep(2 * transient)
 
         except groq.BadRequestError as e:
-            if "tool_use_failed" in str(e) and tool_flakes < MAX_TOOL_FLAKES:
+            msg = str(e)
+            flaky = "tool_use_failed" in msg or "output_parse_failed" in msg
+            if flaky and tool_flakes < MAX_TOOL_FLAKES:
                 tool_flakes += 1
                 continue
             raise
